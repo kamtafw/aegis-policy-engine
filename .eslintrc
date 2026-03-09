@@ -1,0 +1,43 @@
+{
+	"root": true,
+	"parser": "@typescript-eslint/parser",
+	"parserOptions": {
+		"project": "./tsconfig.json",
+		"tsconfigRootDir": ".",
+	},
+	"plugins": ["@typescript-eslint", "import"],
+	"extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended-type-checked"],
+	"rules": {
+		"@typescript-eslint/no-explicit-any": "error",
+		"@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
+		"@typescript-eslint/explicit-function-return-type": "warn",
+
+		"import/no-restricted-paths": [
+			"error",
+			{
+				"zones": [
+					{
+						"target": "./src/core",
+						"from": "./src/adapters",
+						"message": "AD-C-08 Rule 1: Core must never import adapters. Define a port in core/ports/ instead.",
+					},
+					{
+						"target": "./src/core/runtime",
+						"from": "./src/core/runtime/management",
+						"message": "AD-C-08 Rule 2: Runtime must never call into Management plane.",
+					},
+					{
+						"target": "./src/core/runtime/management",
+						"from": "./src/core/runtime",
+						"message": "AD-C-08 Rule 4: Management must never call into Runtime plane.",
+					},
+					{
+						"target": "./src/adapters",
+						"from": "./src/adapters",
+						"message": "AD-C-08: Adapters must not cross-import each other. Depend on ports only.",
+					},
+				],
+			},
+		],
+	},
+}

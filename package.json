@@ -1,0 +1,44 @@
+{
+	"name": "aegis",
+	"version": "0.1.0",
+	"description": "Multi-tenant authorization gateway platform",
+	"main": "dist/server.js",
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch src/server.ts",
+		"build": "tsc",
+		"start": "node dist/server.js",
+		"test": "vitest",
+		"test:run": "vitest run",
+		"lint": "eslint src --ext .ts",
+		"migrate": "node-pg-migrate up",
+		"migrate:down": "node-pg-migrate down",
+		"migrate:create": "node-pg-migrate create"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"packageManager": "pnpm@10.30.3",
+	"dependencies": {
+		"@fastify/formbody": "^8.0.2",
+		"dotenv": "^17.3.1",
+		"fastify": "^5.8.1",
+		"ioredis": "^5.10.0",
+		"jsonwebtoken": "^9.0.3",
+		"postgres": "^3.4.8",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@types/jsonwebtoken": "^9.0.10",
+		"@types/node": "^25.3.3",
+		"@typescript-eslint/eslint-plugin": "^8.56.1",
+		"@typescript-eslint/parser": "^8.56.1",
+		"eslint": "^10.0.2",
+		"eslint-plugin-import": "^2.32.0",
+		"node-pg-migrate": "^8.0.4",
+		"ts-node": "^10.9.2",
+		"tsx": "^4.21.0",
+		"typescript": "^5.9.3",
+		"vitest": "^4.0.18"
+	}
+}
