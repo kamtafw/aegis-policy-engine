@@ -4,6 +4,7 @@ logs
 node_modules
 .nyc_output
 coverage
+npm-debug.log*
 
 # TypeScript/Build Output
 dist
@@ -12,13 +13,32 @@ build/
 *.d.ts
 !src/**/*.d.ts
 
-# Environment Files
-.env
-.env.local
-
 # IDE/Editor Config (VS Code, WebStorm)
 .vscode/
 .DS_Store
+.idea/
+*.swp
+*.swo
+
 
 # Prisma
 /prisma/generated/
+
+# Build output
+dist/
+
+# Environment — never commit credentials
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# TypeScript cache
+*.tsbuildinfo

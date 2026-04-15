@@ -1,10 +1,13 @@
 {
-	"databaseUrl": {
-		"ENV": "DATABASE_URL"
+	"db": {
+		"user": "aegis",
+		"password": "aegis_dev",
+		"host": "localhost",
+		"port": 5432,
+		"database": "aegis"
 	},
-	"migrationsTable": "pgmigrations",
-	"dir": "db/migrations",
-	"direction": "up",
+	"migrations-dir": "./db/migrations",
+	"migrations-table": "pgmigrations",
 	"verbose": true,
 	"decamelize": false
 }

@@ -1,38 +1,52 @@
 {
 	"compilerOptions": {
+		// language and environment
 		"ignoreDeprecations": "6.0",
 		"target": "ES2022",
 		"lib": ["ES2022"],
-		"module": "NodeNext",
-		"moduleResolution": "NodeNext",
+		"module": "ESNext",
+		"moduleResolution": "Bundler",
 
+		// strict correctness — no exceptions (AD-A-01)
 		"strict": true,
 		"noUncheckedIndexedAccess": true,
 		"noImplicitOverride": true,
+		"exactOptionalPropertyTypes": true,
 		"noPropertyAccessFromIndexSignature": true,
 
-		"exactOptionalPropertyTypes": true,
-		"forceConsistentCasingInFileNames": true,
-		"noFallthroughCasesInSwitch": true,
+		// unused code hygiene
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
 		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
+		"forceConsistentCasingInFileNames": true,
 
+		// output
 		"outDir": "./dist",
 		"rootDir": "./src",
-		"sourceMap": true,
 		"declaration": true,
+		"declarationMap": true,
+		"sourceMap": true,
 
+		// interop
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+
+		// path aliases — each alias maps to a plane boundary (AD-C-07, AD-C-08)
+		// @core  → core logic (ports + runtime + management + domain)
+		// @ports → port interfaces only (never adapters)
+		// @adapters → infrastructure implementations
+		// @domain → shared value objects and branded types
 		"baseUrl": ".",
 		"paths": {
 			"@core/*": ["src/core/*"],
 			"@ports/*": ["src/core/ports/*"],
 			"@adapters/*": ["src/adapters/*"],
 			"@domain/*": ["src/core/domain/*"]
-		},
-
-		"esModuleInterop": true,
-		"resolveJsonModule": true,
-		"skipLibCheck": true
+		}
 	},
-	"include": ["src/**/*", "tests/**/*"],
+	"include": ["src/**/*"],
 	"exclude": ["node_modules", "dist", "tests"]
 }

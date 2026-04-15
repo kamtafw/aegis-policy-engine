@@ -1,9 +1,13 @@
 version: "3.9"
 
+# Aegis local development infrastructure
+# Two services — Postgres 16 for persistent state, Redis 7 for cache + audit buffer stream
+# Run: docker compose up -d
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: aegis_postgres
+    container_name: aegis-postgres
     environment:
       POSTGRES_USER: aegis
       POSTGRES_PASSWORD: aegis_dev
@@ -21,10 +25,8 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: aegis_redis
-    command: redis-server --appendonly yes --appendfsync everysec
-    # appendonly yes  — AOF persistence: no silent audit loss on restart
-    # appendfsync everysec — durability/performance balance for audit buffer
+    container_name: aegis-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
       - "6379:6379"
     volumes:
@@ -38,4 +40,6 @@ services:
 
 volumes:
   aegis_postgres_data:
+    driver: local
   aegis_redis_data:
+    driver: local
