@@ -15,6 +15,7 @@
 // it is the only place where adapters and core services are allowed to appear together
 
 import Fastify from "fastify"
+import crypto from "crypto"
 import { healthRoutes } from "./routes/health"
 
 const HOST = process.env["HOST"] ?? "0.0.0.0"

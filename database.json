@@ -1,13 +1,11 @@
 {
-	"db": {
-		"user": "aegis",
-		"password": "aegis_dev",
-		"host": "localhost",
-		"port": 5432,
-		"database": "aegis"
-	},
-	"migrations-dir": "./db/migrations",
-	"migrations-table": "pgmigrations",
-	"verbose": true,
-	"decamelize": false
+  "host": "postgres",
+  "port": 5432,
+  "user": "aegis",
+  "password": "aegis_dev",
+  "database": "aegis",
+  "migrations-dir": "./db/migrations",
+  "migrations-table": "pgmigrations",
+  "verbose": true,
+  "decamelize": false
 }

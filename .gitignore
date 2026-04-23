@@ -6,6 +6,8 @@ node_modules
 coverage
 npm-debug.log*
 
+.pnpm-store
+
 # TypeScript/Build Output
 dist
 build/
