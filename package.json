@@ -20,7 +20,9 @@
 		"test:watch": "vitest",
 		"migrate:up": "node-pg-migrate up --config-file database.json",
 		"migrate:down": "node-pg-migrate down --config-file database.json",
-		"migrate:create": "node-pg-migrate create --config-file database.json"
+		"migrate:create": "node-pg-migrate create --config-file database.json",
+    "migrate:down:docker": "docker run --rm --network aegis-policy-engine_default -v \"$PWD\":/app -w /app node:20 bash -c \"npm install -g pnpm && pnpm migrate:down\"",
+    "migrate:up:docker": "docker run --rm --network aegis-policy-engine_default -v \"$PWD\":/app -w /app node:20 bash -c \"npm install -g pnpm && pnpm migrate:up\""
 	},
 	"keywords": [],
 	"author": "",
