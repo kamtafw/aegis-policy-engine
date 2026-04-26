@@ -1,4 +1,4 @@
-// Aegis server entry point.
+// Aegis server entry point — assembly point only.
 //
 // its job is:
 //   1. read environment configuration
@@ -16,7 +16,13 @@
 
 import Fastify from "fastify"
 import crypto from "crypto"
+import { createPostgresClient } from "@adapters/postgres/client"
+import { TenantRepository } from "@adapters/postgres/TenantRepository"
+import { PrincipalRepository } from "@adapters/postgres/PrincipalRepository"
+import { TenantRegistryService } from "@core/management/tenant-registry/TenantRegistryService"
+import { AccessControlService } from "@core/management/access-control/AccessControlService"
 import { healthRoutes } from "./routes/health"
+import { adminTenantRoutes } from "./routes/admin"
 
 const HOST = process.env["HOST"] ?? "0.0.0.0"
 const PORT = parseInt(process.env["PORT"] ?? "3000", 10)
@@ -39,28 +45,34 @@ async function build() {
 	})
 
 	// -------------------------------------------------------------------------
-	// Infrastructure clients
-	// instantiated here, passed down — never imported directly by core services
+	// Infrastructure clients: instantiated here, passed down — never imported directly by core services
 	// -------------------------------------------------------------------------
 	// TODO: (Day 5): Postgres client (postgres.js)
+	const sql = createPostgresClient()
+
 	// TODO: (Day 5): Redis client (ioredis)
 
 	// -------------------------------------------------------------------------
-	// Adapters
+	// Repository adapters
 	// -------------------------------------------------------------------------
 	// TODO: (Day 5): TenantRepositoryAdapter
 	// TODO: (Day 5): PrincipalRepositoryAdapter
+	const tenantRepo = new TenantRepository(sql)
+	const principalRepo = new PrincipalRepository(sql)
+
 	// TODO: (Day 12): RedisCacheAdapter
 	// TODO: (Day 12): RedisAuditBufferAdapter
 	// TODO: (Day 15): PolicyRepositoryAdapter
 	// TODO: (Day 15): PrincipalProjectionAdapter
-	// TODO: (Day 13): JwtValidatorAdapter
 
 	// -------------------------------------------------------------------------
 	// Core services
 	// -------------------------------------------------------------------------
 	// TODO: (Day 5): TenantRegistryService
 	// TODO: (Day 5): AccessControlService
+	const tenantRegistry = new TenantRegistryService(tenantRepo)
+	const accessControl = new AccessControlService(principalRepo)
+
 	// TODO: (Day 13): IdentityService
 	// TODO: (Day 14): PermissionResolver
 	// TODO: (Day 16): EnforcementPipeline
@@ -68,15 +80,29 @@ async function build() {
 	// -------------------------------------------------------------------------
 	// Routes
 	// -------------------------------------------------------------------------
-	await server.register(healthRoutes)
+	await server.register(healthRoutes(sql))
 	// TODO: (Day 5): Admin routes (tenants, principals)
+	await server.register(adminTenantRoutes(tenantRegistry, accessControl))
+
+	// graceful shutdown — allow in-flight requests to complete
+	// critical for the audit buffer: the process must not be killed while an
+	// AuditRecord write is in progress (AD-S-08)
+	const shutdown = async (signal: string) => {
+		server.log.info({ signal }, "Shutdown signal received")
+		await server.close()
+		await sql.end()
+		server.log.info("Server and DB connection closed")
+		process.exit(0)
+	}
+
+	process.on("SIGTERM", () => void shutdown("SIGTERM"))
+	process.on("SIGINT", () => void shutdown("SIGINT"))
 
 	return server
 }
 
 async function start() {
 	const server = await build()
-
 	try {
 		await server.listen({ host: HOST, port: PORT })
 	} catch (err) {

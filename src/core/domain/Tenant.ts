@@ -17,7 +17,7 @@ export interface Tenant {
 	readonly name: string
 	readonly publicKey: string /** RSA public key in PEM format — used for JWT signature verification (AD-S-04) */
 	readonly keyVersion: number /** incremented on every key rotation — scopes the key cache entry (AD-P-07) */
-	readonly policyVersion: string /** incremented on every policy/role/permission change — scopes decision cache (AD-P-07) */
+	readonly policyVersion: number /** incremented on every policy/role/permission change — scopes decision cache (AD-P-07) */
 	readonly planTier: PlanTier
 	readonly createdAt: Date
 }
