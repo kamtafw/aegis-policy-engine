@@ -2,7 +2,14 @@
 // on every method — there is no "get all roles" query; (AD-S-01)
 
 import type { Sql } from "./client"
-import type { TenantId, RoleId, Role, PermissionId } from "@core/domain"
+import type {
+	TenantId,
+	RoleId,
+	Role,
+	PermissionId,
+	PrincipalId,
+	PermissionSlug,
+} from "@core/domain"
 
 interface RoleRow {
 	id: string
@@ -87,5 +94,26 @@ export class RoleRepository {
         AND rp.role_id  = ${roleId}
     `
 		return rows.map((r) => r.permissionId as PermissionId)
+	}
+
+	// traverses principal → roles → permissions in a single query;
+	// returns the flat set of permission slugs — the role graph is fully
+	// resolved inside the DB and never exposed to callers (AD-P-03)
+	async getFlatPermissionSlugs(
+		tenantId: TenantId,
+		principalId: PrincipalId,
+	): Promise<PermissionSlug[]> {
+		const rows = await this.sql<{ slug: string }[]>`
+      SELECT DISTINCT p.slug
+      FROM   principal_roles  pr
+      JOIN   role_permissions rp ON rp.role_id       = pr.role_id
+      JOIN   permissions      p  ON p.id             = rp.permission_id
+                                AND p.tenant_id      = ${tenantId}
+      JOIN   roles            r  ON r.id             = pr.role_id
+                                AND r.tenant_id      = ${tenantId}
+      WHERE  pr.principal_id = ${principalId}
+    `
+
+		return rows.map((r) => r.slug as PermissionSlug)
 	}
 }

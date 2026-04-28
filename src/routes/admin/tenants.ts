@@ -9,7 +9,7 @@
 //   all request bodies are validated with Zod at this boundary;
 //   validation errors return 400 with a structured message;
 //   Zod never appears inside core services or domain types
-//
+//import type { AccessControlService } from "@core/management/access-control/AccessControlService"
 // ERROR HANDLING:
 //   postgres unique constraint violations (code 23505) → 409 Conflict;
 //   unknown errors are re-thrown and handled by Fastify's error handler

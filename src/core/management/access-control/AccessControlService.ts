@@ -39,6 +39,7 @@
 import type {
 	Permission,
 	PermissionId,
+	PermissionSlug,
 	Principal,
 	PrincipalId,
 	Role,
@@ -187,6 +188,19 @@ export class AccessControlService {
 			this.tenantRepo.incrementPolicyVersion(tenantId),
 			this.principalRepo.incrementVersion(tenantId, principalId),
 		])
+	}
+
+	// returns the flat set of permission slugs held by a principal
+	// this is the write-model projection used by the management plane;
+	// the runtime plane (PermissionResolver, Day 14) reads the same data
+	// through a different path — via cache first, then PrincipalProjectionPort;
+	// these two never call each other (AD-C-07, AD-C-08)
+	async flattenPermissions(
+		principalId: PrincipalId,
+		tenantId: TenantId,
+	): Promise<Set<PermissionSlug>> {
+		const slugs = await this.roleRepo.getFlatPermissionSlugs(tenantId, principalId)
+		return new Set(slugs)
 	}
 }
 
