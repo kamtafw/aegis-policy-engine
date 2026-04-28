@@ -1,6 +1,8 @@
-version: "3.9"
-
 # Aegis local development infrastructure
+# Ports are exposed to the Codespaces host so the server process (running
+# outside Docker) can reach Postgres and Redis directly on localhost
+# Migrations run inside Docker via scripts/dev.ts and use the internal
+# hostname "postgres" — see database.json
 # Two services — Postgres 16 for persistent state, Redis 7 for cache + audit buffer stream
 # Run: docker compose up -d
 
@@ -11,6 +13,8 @@ services:
       POSTGRES_USER: aegis
       POSTGRES_PASSWORD: aegis_dev
       POSTGRES_DB: aegis
+    ports:
+      - "5432:5432"
     volumes:
       - aegis_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -23,6 +27,8 @@ services:
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
     volumes:
       - aegis_redis_data:/data
     healthcheck:
