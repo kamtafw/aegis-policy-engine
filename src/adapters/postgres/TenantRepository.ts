@@ -1,20 +1,20 @@
-// repository adapter for the tenants table.
+// repository adapter for the tenants table
 //
-// all methods return domain types (Tenant), never raw DB rows
+// all methods return domain types (Tenant), never raw DB rows;
 // the postgres.js `transform: camel` option on the client handles
-// snake_case → camelCase conversion, so row shapes match domain types directly.
+// snake_case → camelCase conversion, so row shapes match domain types directly
 //
-// this adapter is instantiated in server.ts and injected into TenantRegistryService.
-// Core never imports this file — it is wired at the composition root only.
+// this adapter is instantiated in server.ts and injected into TenantRegistryService;
+// Core never imports this file — it is wired at the composition root only
 //
 // plane: adapters/postgres
 
 import { Sql } from "./client"
 import type { TenantId, Tenant, PlanTier } from "@core/domain"
 
-// shape of a row coming back from the tenants table after camelCase transform.
+// shape of a row coming back from the tenants table after camelCase transform;
 // matches the Tenant domain type closely — only Date needs a cast since
-// postgres.js returns timestamptz as Date objects natively.
+// postgres.js returns timestamptz as Date objects natively
 interface TenantRow {
 	id: string
 	slug: string

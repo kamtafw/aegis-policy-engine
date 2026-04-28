@@ -1,7 +1,26 @@
 // AccessControlService — write model for the authorization domain.
 //
-// responsibilities in this file (Day 5):
-//   - Principal creation and listing
+// VERSION COUNTER OWNERSHIP (AD-P-07):
+//   this service is the only place that increments version counters;
+//   route handlers never touch them; the rules are:
+//
+//   create role                → policy_version++ on tenant
+//   create permission          → policy_version++ on tenant
+//   assign permission to role  → policy_version++ on tenant
+//   assign role to principal   → policy_version++ on tenant
+//                                principal_version++ on that specific principal
+//
+//   policy_version invalidates the decision cache for all principals in the tenant;
+//   principal_version the decision cache for one specific principal;
+//   they are incremented together on role-to-principal assignment because both
+//   cached dimensions are affected
+//
+// PLANE BOUNDARY NOTE:
+//   this service imports directly from the adapter types (RoleRepository, etc.);
+//   this is a deliberate Day 5-6 shortcut — the full port/adapter split for
+//   management-plane repositories is lower priority than for the runtime plane;
+//   the runtime plane services (IdentityService, PermissionResolver, EnforcementPipeline)
+//   will be strictly port-based from Day 12 onward
 //
 // responsibilities added later:
 //   - Role CRUD (Day 6)
@@ -17,20 +36,50 @@
 //
 // plane: core/management
 
-import type { Principal, PrincipalId, TenantId } from "@core/domain"
+import type {
+	Permission,
+	PermissionId,
+	Principal,
+	PrincipalId,
+	Role,
+	RoleId,
+	TenantId,
+	ValidAction,
+} from "@core/domain"
 import type {
 	PrincipalRepository,
 	CreatePrincipalInput,
 } from "../../../adapters/postgres/PrincipalRepository"
+import { TenantRepository } from "@adapters/postgres/TenantRepository"
+import { RoleRepository } from "@adapters/postgres/RoleRepository"
+import { PermissionRepository } from "@adapters/postgres/PermissionRepository"
 
 export interface CreatePrincipalParams {
 	externalId: string
 	metadata?: Record<string, unknown>
 }
 
-export class AccessControlService {
-	constructor(private readonly principalRepo: PrincipalRepository) {}
+export interface CreateRoleParams {
+	name: string
+}
 
+export interface CreatePermissionParams {
+	resource: string
+	action: ValidAction
+	specificity: string | null
+}
+
+export class AccessControlService {
+	constructor(
+		private readonly principalRepo: PrincipalRepository,
+		private readonly tenantRepo: TenantRepository,
+		private readonly roleRepo: RoleRepository,
+		private readonly permissionRepo: PermissionRepository,
+	) {}
+
+	// ---------------------------------------------------------------------------
+	// Principals
+	// ---------------------------------------------------------------------------
 	async createPrincipal(tenantId: TenantId, params: CreatePrincipalParams): Promise<Principal> {
 		const id = `pri_${crypto.randomUUID()}` as PrincipalId
 
@@ -43,8 +92,111 @@ export class AccessControlService {
 		return this.principalRepo.create(tenantId, input)
 	}
 
-	// tenant_id required — no cross-tenant listing exists (AD-S-01).
+	// tenant_id required — no cross-tenant listing exists (AD-S-01)
 	async listPrincipals(tenantId: TenantId): Promise<Principal[]> {
 		return this.principalRepo.listByTenant(tenantId)
+	}
+
+	// ---------------------------------------------------------------------------
+	// Roles
+	// ---------------------------------------------------------------------------
+	async createRole(tenantId: TenantId, params: CreateRoleParams): Promise<Role> {
+		const id = `rol_${crypto.randomUUID()}` as RoleId
+
+		const role = await this.roleRepo.create(tenantId, { id, name: params.name })
+
+		// any change to the authorization model invalidates the decision cache (AD-P-07)
+		await this.tenantRepo.incrementPolicyVersion(tenantId)
+
+		return role
+	}
+
+	// ---------------------------------------------------------------------------
+	// Permissions
+	// ---------------------------------------------------------------------------
+	async createPermission(tenantId: TenantId, params: CreatePermissionParams): Promise<Permission> {
+		const id = `per_${crypto.randomUUID()}` as PermissionId
+
+		const permission = await this.permissionRepo.create(tenantId, {
+			id,
+			resource: params.resource,
+			action: params.action,
+			specificity: params.specificity,
+		})
+
+		// new permission changes the authorization model — invalidate decision cache
+		await this.tenantRepo.incrementPolicyVersion(tenantId)
+
+		return permission
+	}
+
+	// ---------------------------------------------------------------------------
+	// Assignments
+	// ---------------------------------------------------------------------------
+	async assignPermissionToRole(
+		tenantId: TenantId,
+		roleId: RoleId,
+		permissionId: PermissionId,
+	): Promise<void> {
+		// verify both exist in this tenant before assigning
+		const [role, permission] = await Promise.all([
+			this.roleRepo.findById(tenantId, roleId),
+			this.permissionRepo.findById(tenantId, permissionId),
+		])
+
+		if (!role) {
+			throw new NotFoundError(`Role '${roleId}' not found in tenant '${tenantId}'`)
+		}
+
+		if (!permission) {
+			throw new NotFoundError(`Permission '${permissionId}' not found in tenant '${tenantId}'`)
+		}
+
+		await this.roleRepo.assignPermission(tenantId, roleId, permissionId)
+
+		// assigning a permission to a role affects every principal who holds that
+		// role — the entire tenant's decision cache must be invalidated
+		await this.tenantRepo.incrementPolicyVersion(tenantId)
+	}
+
+	async assignRoleToPrincipal(
+		tenantId: TenantId,
+		principalId: PrincipalId,
+		roleId: RoleId,
+	): Promise<void> {
+		// verify both exist in this tenant before assigning
+		const [principal, role] = await Promise.all([
+			this.principalRepo.findById(tenantId, principalId),
+			this.roleRepo.findById(tenantId, roleId),
+		])
+
+		if (!principal) {
+			throw new NotFoundError(`Principal '${principal}' not found in tenant '${tenantId}'`)
+		}
+		if (!role) {
+			throw new NotFoundError(`Role '${roleId}' not found in tenant '${tenantId}'`)
+		}
+
+		await this.principalRepo.assignRole(tenantId, principalId, roleId)
+
+		// two cache dimension are affected (AD-P-07, AD-P-08):
+		//   policy_version — the tenant's decision cache key includes this
+		//   principal_version — the principal's specific cache entry is now stale
+		// both must be incremented atomically from the perspective of the caller
+		await Promise.all([
+			this.tenantRepo.incrementPolicyVersion(tenantId),
+			this.principalRepo.incrementVersion(tenantId, principalId),
+		])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Domain errors — raised by the service, caught by route handlers
+// ---------------------------------------------------------------------------
+export class NotFoundError extends Error {
+	readonly code = "NOT_FOUND" as const
+	constructor(message: string) {
+		super(message)
+		this.name = "NotFoundError"
 	}
 }

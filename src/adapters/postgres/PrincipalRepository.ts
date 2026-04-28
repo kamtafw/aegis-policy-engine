@@ -8,7 +8,7 @@
 // plane: adapters/postgres
 
 import type { Sql } from "./client.js"
-import type { Principal, TenantId, PrincipalId } from "@core/domain"
+import type { Principal, TenantId, PrincipalId, RoleId } from "@core/domain"
 
 interface PrincipalRow {
 	id: string
@@ -87,5 +87,20 @@ export class PrincipalRepository {
     `
 		if (!row) throw new Error(`Principal not found: ${id} in tenant ${tenantId}`)
 		return row.principalVersion
+	}
+
+	async assignRole(tenantId: TenantId, principalId: PrincipalId, roleId: RoleId): Promise<void> {
+		// the JOIN ensures both the principal and role belong to the same tenant
+		await this.sql`
+      INSERT INTO principal_roles (principal_id, role_id)
+      SELECT p.id, r.id
+      FROM   principals p
+      JOIN   roles      r
+        ON   r.id        = ${roleId}
+        AND  r.tenant_id = ${tenantId}
+      WHERE  p.id        = ${principalId}
+        AND  p.tenant_id = ${tenantId}
+      ON CONFLICT (principal_id, role_id) DO NOTHING
+    `
 	}
 }

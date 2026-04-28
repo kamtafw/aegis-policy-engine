@@ -19,10 +19,13 @@ import crypto from "crypto"
 import { createPostgresClient } from "@adapters/postgres/client"
 import { TenantRepository } from "@adapters/postgres/TenantRepository"
 import { PrincipalRepository } from "@adapters/postgres/PrincipalRepository"
+import { RoleRepository } from "@adapters/postgres/RoleRepository"
+import { PermissionRepository } from "@adapters/postgres/PermissionRepository"
 import { TenantRegistryService } from "@core/management/tenant-registry/TenantRegistryService"
 import { AccessControlService } from "@core/management/access-control/AccessControlService"
 import { healthRoutes } from "./routes/health"
-import { adminTenantRoutes } from "./routes/admin"
+import { adminTenantRoutes } from "./routes/admin/tenants"
+import { adminRoleRoutes } from "./routes/admin/roles"
 
 const HOST = process.env["HOST"] ?? "0.0.0.0"
 const PORT = parseInt(process.env["PORT"] ?? "3000", 10)
@@ -47,31 +50,33 @@ async function build() {
 	// -------------------------------------------------------------------------
 	// Infrastructure clients: instantiated here, passed down — never imported directly by core services
 	// -------------------------------------------------------------------------
-	// TODO: (Day 5): Postgres client (postgres.js)
 	const sql = createPostgresClient()
-
 	// TODO: (Day 5): Redis client (ioredis)
 
 	// -------------------------------------------------------------------------
 	// Repository adapters
 	// -------------------------------------------------------------------------
-	// TODO: (Day 5): TenantRepositoryAdapter
-	// TODO: (Day 5): PrincipalRepositoryAdapter
 	const tenantRepo = new TenantRepository(sql)
 	const principalRepo = new PrincipalRepository(sql)
+	const roleRepo = new RoleRepository(sql)
+	const permissionRepo = new PermissionRepository(sql)
 
 	// TODO: (Day 12): RedisCacheAdapter
 	// TODO: (Day 12): RedisAuditBufferAdapter
+	// TODO: (Day 13): JwtValidatorAdapter
 	// TODO: (Day 15): PolicyRepositoryAdapter
 	// TODO: (Day 15): PrincipalProjectionAdapter
 
 	// -------------------------------------------------------------------------
 	// Core services
 	// -------------------------------------------------------------------------
-	// TODO: (Day 5): TenantRegistryService
-	// TODO: (Day 5): AccessControlService
 	const tenantRegistry = new TenantRegistryService(tenantRepo)
-	const accessControl = new AccessControlService(principalRepo)
+	const accessControl = new AccessControlService(
+		principalRepo,
+		tenantRepo,
+		roleRepo,
+		permissionRepo,
+	)
 
 	// TODO: (Day 13): IdentityService
 	// TODO: (Day 14): PermissionResolver
@@ -81,8 +86,8 @@ async function build() {
 	// Routes
 	// -------------------------------------------------------------------------
 	await server.register(healthRoutes(sql))
-	// TODO: (Day 5): Admin routes (tenants, principals)
 	await server.register(adminTenantRoutes(tenantRegistry, accessControl))
+	await server.register(adminRoleRoutes(tenantRegistry, accessControl))
 
 	// graceful shutdown — allow in-flight requests to complete
 	// critical for the audit buffer: the process must not be killed while an
