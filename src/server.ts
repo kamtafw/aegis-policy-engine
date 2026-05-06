@@ -29,6 +29,9 @@ import { adminRoleRoutes } from "./routes/admin/roles"
 import { PolicyRepository } from "@adapters/postgres/PolicyRepository"
 import { PolicyRegistryService } from "@core/management/policy-registry/PolicyRegistryService"
 import { adminPolicyRoutes } from "./routes/admin/policies"
+import { ServiceRepository } from "@adapters/postgres/ServiceRepository"
+import { ServiceRegistryService } from "@core/management/service-registry/ServiceRegistryService"
+import { adminServiceRoutes } from "./routes/admin/services"
 
 const HOST = process.env["HOST"] ?? "0.0.0.0"
 const PORT = parseInt(process.env["PORT"] ?? "3000", 10)
@@ -64,6 +67,7 @@ async function build() {
 	const roleRepo = new RoleRepository(sql)
 	const permissionRepo = new PermissionRepository(sql)
 	const policyRepo = new PolicyRepository(sql)
+	const serviceRepo = new ServiceRepository(sql)
 
 	// TODO: (Day 12): RedisCacheAdapter
 	// TODO: (Day 12): RedisAuditBufferAdapter
@@ -75,15 +79,14 @@ async function build() {
 	// Core services
 	// -------------------------------------------------------------------------
 	const tenantRegistry = new TenantRegistryService(tenantRepo)
-
 	const accessControl = new AccessControlService(
 		principalRepo,
 		tenantRepo,
 		roleRepo,
 		permissionRepo,
 	)
-
 	const policyRegistry = new PolicyRegistryService(policyRepo, tenantRepo)
+	const serviceRegistry = new ServiceRegistryService(serviceRepo)
 
 	// TODO: (Day 13): IdentityService
 	// TODO: (Day 14): PermissionResolver
@@ -96,6 +99,7 @@ async function build() {
 	await server.register(adminTenantRoutes(tenantRegistry, accessControl))
 	await server.register(adminRoleRoutes(tenantRegistry, accessControl))
 	await server.register(adminPolicyRoutes(tenantRegistry, policyRegistry))
+	await server.register(adminServiceRoutes(tenantRegistry, serviceRegistry))
 
 	// graceful shutdown — allow in-flight requests to complete
 	// critical for the audit buffer: the process must not be killed while an
