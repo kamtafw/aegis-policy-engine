@@ -110,7 +110,13 @@ export interface AuditRecord {
 	readonly principalId: PrincipalId
 	readonly routeId: RouteId
 	readonly policyId: PolicyId
-	readonly action: ActionSlug
-	readonly decision: Decision
+	readonly action: ActionSlug /** the action slug from RouteContext — what the principal attempted */
+	readonly decision: Decision /** the full evaluation result, including version snapshots */
+	/**
+   * set by EnforcementPipeline at evaluation time — NOT at drain time;
+   * the AuditDrainWorker writes to Postgres asynchronously; if the DB
+   * timestamp were used, every record would show the drain time, not
+   * the decision time; this field must reflect when the decision was made
+   */
 	readonly timestamp: Date
 }

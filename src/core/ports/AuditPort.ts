@@ -16,24 +16,7 @@
 //
 // plane: core/ports — no infrastructure imports here; ever
 
-import type { TenantId, PrincipalId, RouteId, ActionSlug, PolicyId } from "@domain/ids"
-
-/**
- * the decision record written to the audit buffer for every gateway request
- * assembled by EnforcementPipeline — the only component with all four context objects
- */
-export interface AuditRecord {
-	tenantId: TenantId
-	principalId: PrincipalId
-	routeId: RouteId
-	action: ActionSlug /** the action slug from RouteContext — what the principal attempted */
-	policyId: PolicyId
-	allowed: boolean /** whether the request was allowed or denied */
-	reason: string /** human-readable reason from PolicyEngine — names the deciding permission slug */
-	evaluatedPolicyVersion: number /** the policy version active at evaluation time — for forensic audit (AD-S-08) */
-	evaluatedPrincipalVersion: number /** the principal version active at evaluation time */
-	timestamp: Date
-}
+export type { AuditRecord } from "@core/runtime/context"
 
 export interface AuditPort {
 	/**
@@ -54,5 +37,5 @@ export interface AuditPort {
 	 * if this method returns without throwing, the caller may assume the record
 	 * is durably buffered and will eventually reach the persistent audit log
 	 */
-	record(auditRecord: AuditRecord): Promise<void>
+	record(auditRecord: import("@core/runtime/context").AuditRecord): Promise<void>
 }
