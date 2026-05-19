@@ -15,10 +15,7 @@
 // plane: core/management
 
 import type { TenantId, Tenant, PlanTier } from "@core/domain"
-import type {
-	TenantRepository,
-	CreateTenantInput,
-} from "../../../adapters/postgres/TenantRepository"
+import type { CreateTenantInput, TenantRepositoryPort } from "@core/ports"
 
 // what the route handler passes in — validated by Zod at the HTTP boundary.
 export interface CreateTenantParams {
@@ -29,7 +26,7 @@ export interface CreateTenantParams {
 }
 
 export class TenantRegistryService {
-	constructor(private readonly tenantRepo: TenantRepository) {}
+	constructor(private readonly tenantRepo: TenantRepositoryPort) {}
 
 	async createTenant(params: CreateTenantParams): Promise<Tenant> {
 		const id = `ten_${crypto.randomUUID()}` as TenantId

@@ -7,6 +7,7 @@
 //
 // plane: adapters/postgres
 
+import type { CreatePrincipalInput, PrincipalRepositoryPort } from "@core/ports"
 import type { Sql } from "./client.js"
 import type { Principal, TenantId, PrincipalId, RoleId } from "@core/domain"
 
@@ -20,12 +21,6 @@ interface PrincipalRow {
 	updatedAt: Date
 }
 
-export interface CreatePrincipalInput {
-	id: PrincipalId
-	externalId: string
-	metadata: Record<string, unknown>
-}
-
 function rowToPrincipal(row: PrincipalRow): Principal {
 	return {
 		id: row.id as PrincipalId,
@@ -37,7 +32,7 @@ function rowToPrincipal(row: PrincipalRow): Principal {
 	}
 }
 
-export class PrincipalRepository {
+export class PrincipalRepository implements PrincipalRepositoryPort {
 	constructor(private readonly sql: Sql) {}
 
 	// tenant_id is required — enforced structurally, not by convention (AD-S-01).

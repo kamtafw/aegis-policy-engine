@@ -2,7 +2,7 @@
 	"root": true,
 	"parser": "@typescript-eslint/parser",
 	"parserOptions": {
-		"project": "./tsconfig.json",
+		"project": "./tsconfig.eslint.json",
 		"tsconfigRootDir": ".",
 	},
 	"plugins": ["@typescript-eslint", "import"],
@@ -10,7 +10,8 @@
 	"rules": {
 		"@typescript-eslint/no-explicit-any": "error",
 		"@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-		"@typescript-eslint/explicit-function-return-type": "warn",
+		"@typescript-eslint/explicit-function-return-type": "off",
+		"@typescript-eslint/require-await": "off",
 
 		"import/no-restricted-paths": [
 			"error",

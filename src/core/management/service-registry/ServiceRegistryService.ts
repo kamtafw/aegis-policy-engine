@@ -11,13 +11,11 @@
 //
 // plane: core/management
 
-import type {
-	HttpMethod,
-	Route,
-	Service,
-	ServiceRepository,
-} from "@adapters/postgres/ServiceRepository"
 import type { PolicyId, RouteId, ServiceId, TenantId } from "@core/domain"
+import { NotFoundError } from "@core/domain/errors"
+import type { HttpMethod, Route, Service, ServiceRepositoryPort } from "@core/ports"
+
+export { NotFoundError }
 
 export interface CreateServiceParams {
 	name: string
@@ -30,16 +28,8 @@ export interface CreateRouteParams {
 	policyId: PolicyId | null
 }
 
-export class NotFoundError extends Error {
-	readonly code = "NOT_FOUND" as const
-	constructor(message: string) {
-		super(message)
-		this.name = "NotFoundError"
-	}
-}
-
 export class ServiceRegistryService {
-	constructor(private readonly serviceRepo: ServiceRepository) {}
+	constructor(private readonly serviceRepo: ServiceRepositoryPort) {}
 
 	async createService(tenantId: TenantId, params: CreateServiceParams): Promise<Service> {
 		const id = `svc_${crypto.randomUUID()}` as ServiceId

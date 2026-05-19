@@ -6,23 +6,15 @@
 //
 // plane: adapters/postgres
 
+import type {
+	CreateRouteInput,
+	CreateServiceInput,
+	Route,
+	Service,
+	ServiceRepositoryPort,
+} from "@core/ports"
 import type { Sql } from "./client"
 import type { PolicyId, RouteId, ServiceId, TenantId } from "@core/domain"
-
-export interface Service {
-	id: ServiceId
-	tenantId: TenantId
-	name: string
-	upstreamUrl: string
-	isActive: boolean
-	createdAt: Date
-}
-
-export interface CreateServiceInput {
-	id: ServiceId
-	name: string
-	upstreamUrl: string
-}
 
 interface ServiceRow {
 	id: string
@@ -48,26 +40,6 @@ function rowToService(row: ServiceRow): Service {
 // Route
 // ---------------------------------------------------------------------------
 
-export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS"
-
-export interface Route {
-	id: RouteId
-	serviceId: ServiceId
-	tenantId: TenantId
-	method: HttpMethod
-	pathPattern: string
-	policyId: PolicyId | null // nullable — a route with no policy always denies (AD-S-07)
-	policyName: string | null // joined from policies table for human-readable inspection
-	createdAt: Date
-}
-
-export interface CreateRouteInput {
-	id: RouteId
-	method: HttpMethod
-	pathPattern: string
-	policyId: PolicyId | null
-}
-
 // raw row from the JOIN query — policy fields may be null
 interface RouteRow {
 	id: string
@@ -85,7 +57,7 @@ function rowToRoute(row: RouteRow): Route {
 		id: row.id as RouteId,
 		serviceId: row.serviceId as ServiceId,
 		tenantId: row.tenantId as TenantId,
-		method: row.method as HttpMethod,
+		method: row.method as Route["method"],
 		pathPattern: row.pathPattern,
 		policyId: row.policyId as PolicyId | null,
 		policyName: row.policyName,
@@ -97,7 +69,7 @@ function rowToRoute(row: RouteRow): Route {
 // Repository
 // ---------------------------------------------------------------------------
 
-export class ServiceRepository {
+export class ServiceRepository implements ServiceRepositoryPort {
 	constructor(private readonly sql: Sql) {}
 
 	// -------------------------------------------------------------------------

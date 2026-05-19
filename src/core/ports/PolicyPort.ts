@@ -3,8 +3,30 @@
 //
 // implemented by: adapters/postgres/PolicyRepositoryAdapter.ts
 //
-// all queries are tenant-scoped — tenant_id is non-optional (AD-S-01).
-// the gateway never receives a policy that wasn't already validated at write time (AD-C-02).
+// WHY THIS EXISTS AS A PORT:
+//   EnforcementPipeline needs to fetch a Policy by route ID and tenant ID;
+//   it should not know whether that comes from Postgres, a cache, or anywhere
+//   else; PolicyPort is the contract — EnforcementPipeline depends on the
+//   interface, not the implementation
+//
+//   this is also the port that makes EnforcementPipeline unit-testable:
+//   in pipeline tests (Day 16), PolicyPort is mocked to return controlled
+//   policy objects without a real database
+//
+// TENANT ISOLATION (AD-S-01):
+//   tenant_id is non-optional; there is no "get policy by route ID" without
+//   a tenant; the query is structurally scoped — cross-tenant policy access
+//   is impossible from this interface
+//
+// NULL SEMANTICS:
+//   returns null if no policy is attached to this route;
+//   EnforcementPipeline treats null as deny — no policy means no access (AD-S-07);
+//   this is intentional: a route without a policy is fail-closed by default
+//
+// VALIDATION GUARANTEE (AD-C-02):
+//   Policies stored in the database were validated at write time by
+//   PolicyRegistryService; The gateway never encounters a malformed policy;
+//   this port does not re-validate — it trusts the write-time guarantee
 //
 // plane: core/ports — no infrastructure imports here; ever
 

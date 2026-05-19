@@ -21,10 +21,8 @@
 //
 // plane: core/management
 
-import type { PolicyRepository } from "@adapters/postgres/PolicyRepository"
-import type { TenantRepository } from "@adapters/postgres/TenantRepository"
 import type { PermissionSlug, PolicyId, TenantId } from "@core/domain"
-import type { Policy } from "@core/ports"
+import type { Policy, PolicyRepositoryPort, TenantRepositoryPort } from "@core/ports"
 
 // the single context version in play for this deployment;
 // when the evaluation context schema changes, this constant is incremented
@@ -40,8 +38,8 @@ export interface CreatePolicyParams {
 
 export class PolicyRegistryService {
 	constructor(
-		private readonly policyRepo: PolicyRepository,
-		private readonly tenantRepo: TenantRepository,
+		private readonly policyRepo: PolicyRepositoryPort,
+		private readonly tenantRepo: TenantRepositoryPort,
 	) {}
 
 	async createPolicy(tenantId: TenantId, params: CreatePolicyParams): Promise<Policy> {

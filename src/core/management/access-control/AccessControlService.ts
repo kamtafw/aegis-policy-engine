@@ -48,12 +48,16 @@ import type {
 	ValidAction,
 } from "@core/domain"
 import type {
-	PrincipalRepository,
+	CreatePermissionInput,
 	CreatePrincipalInput,
-} from "../../../adapters/postgres/PrincipalRepository"
-import { TenantRepository } from "@adapters/postgres/TenantRepository"
-import { RoleRepository } from "@adapters/postgres/RoleRepository"
-import { PermissionRepository } from "@adapters/postgres/PermissionRepository"
+	PermissionRepositoryPort,
+	PrincipalRepositoryPort,
+	RoleRepositoryPort,
+	TenantRepositoryPort,
+} from "@core/ports"
+import { NotFoundError } from "@core/domain/errors"
+
+export { NotFoundError }
 
 export interface CreatePrincipalParams {
 	externalId: string
@@ -72,10 +76,10 @@ export interface CreatePermissionParams {
 
 export class AccessControlService {
 	constructor(
-		private readonly principalRepo: PrincipalRepository,
-		private readonly tenantRepo: TenantRepository,
-		private readonly roleRepo: RoleRepository,
-		private readonly permissionRepo: PermissionRepository,
+		private readonly principalRepo: PrincipalRepositoryPort,
+		private readonly tenantRepo: TenantRepositoryPort,
+		private readonly roleRepo: RoleRepositoryPort,
+		private readonly permissionRepo: PermissionRepositoryPort,
 	) {}
 
 	// ---------------------------------------------------------------------------
@@ -93,7 +97,6 @@ export class AccessControlService {
 		return this.principalRepo.create(tenantId, input)
 	}
 
-	// tenant_id required — no cross-tenant listing exists (AD-S-01)
 	async listPrincipals(tenantId: TenantId): Promise<Principal[]> {
 		return this.principalRepo.listByTenant(tenantId)
 	}
@@ -118,12 +121,14 @@ export class AccessControlService {
 	async createPermission(tenantId: TenantId, params: CreatePermissionParams): Promise<Permission> {
 		const id = `per_${crypto.randomUUID()}` as PermissionId
 
-		const permission = await this.permissionRepo.create(tenantId, {
+		const input: CreatePermissionInput = {
 			id,
 			resource: params.resource,
 			action: params.action,
 			specificity: params.specificity,
-		})
+		}
+
+		const permission = await this.permissionRepo.create(tenantId, input)
 
 		// new permission changes the authorization model — invalidate decision cache
 		await this.tenantRepo.incrementPolicyVersion(tenantId)
@@ -201,16 +206,5 @@ export class AccessControlService {
 	): Promise<Set<PermissionSlug>> {
 		const slugs = await this.roleRepo.getFlatPermissionSlugs(tenantId, principalId)
 		return new Set(slugs)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Domain errors — raised by the service, caught by route handlers
-// ---------------------------------------------------------------------------
-export class NotFoundError extends Error {
-	readonly code = "NOT_FOUND" as const
-	constructor(message: string) {
-		super(message)
-		this.name = "NotFoundError"
 	}
 }

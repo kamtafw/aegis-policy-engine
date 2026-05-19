@@ -8,7 +8,7 @@
 // plane: adapters/postgres
 
 import type { Sql } from "./client"
-import type { Policy } from "@core/ports"
+import type { CreatePolicyInput, Policy, PolicyRepositoryPort } from "@core/ports"
 import type { TenantId, PolicyId, PermissionSlug } from "@core/domain"
 
 interface PolicyRow {
@@ -33,15 +33,7 @@ function rowToPolicy(row: PolicyRow): Policy {
 	}
 }
 
-export interface CreatePolicyInput {
-	id: PolicyId
-	name: string
-	requiredPermissions: PermissionSlug[]
-	matchStrategy: "ANY" | "ALL"
-	contextVersion: string
-}
-
-export class PolicyRepository {
+export class PolicyRepository implements PolicyRepositoryPort {
 	constructor(private readonly sql: Sql) {}
 
 	async create(tenantId: TenantId, input: CreatePolicyInput): Promise<Policy> {

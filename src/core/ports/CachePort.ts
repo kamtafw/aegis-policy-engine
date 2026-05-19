@@ -3,6 +3,16 @@
 //   - PermissionResolver (permission projection: versioned composite key)
 //
 // implemented by: adapters/redis/RedisCacheAdapter.ts
+// 
+// // FAILURE SEMANTICS:
+//   get()  — returns null on cache miss. Throws on infrastructure failure
+//   set()  — throws on infrastructure failure
+//   del()  — no-op if key does not exist. Throws on infrastructure failure
+//   lock() — throws if lock cannot be acquired within timeoutMs
+//
+//   the distinction between "miss" (null) and "failure" (throw) is critical;
+//   PermissionResolver treats null as "go to DB"; it treats a throw as a
+//   pipeline failure that denies the request (AD-S-07)
 //
 // plane: core/ports — no infrastructure imports here; ever
 

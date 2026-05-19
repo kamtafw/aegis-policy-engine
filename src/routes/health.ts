@@ -13,7 +13,7 @@ import type { Sql } from "@adapters/postgres/client"
 // factory function — takes the postgres client so /ready can run a real check
 export function healthRoutes(sql: Sql): FastifyPluginAsync {
 	return async function (server) {
-		server.get("/health", async (_request, reply) => {
+		server.get("/health", (_request, reply) => {
 			return reply.code(200).send({
 				status: "ok",
 				service: "aegis",

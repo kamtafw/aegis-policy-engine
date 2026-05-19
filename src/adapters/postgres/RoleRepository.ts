@@ -1,6 +1,7 @@
 // all queries are tenant-scoped; tenant_id is a non-optional parameter
 // on every method — there is no "get all roles" query; (AD-S-01)
 
+import type { CreateRoleInput, RoleRepositoryPort } from "@core/ports"
 import type { Sql } from "./client"
 import type {
 	TenantId,
@@ -18,11 +19,6 @@ interface RoleRow {
 	createdAt: Date
 }
 
-export interface CreateRoleInput {
-	id: RoleId
-	name: string
-}
-
 function rowToRole(row: RoleRow): Role {
 	return {
 		id: row.id as RoleId,
@@ -32,7 +28,7 @@ function rowToRole(row: RoleRow): Role {
 	}
 }
 
-export class RoleRepository {
+export class RoleRepository implements RoleRepositoryPort {
 	constructor(private readonly sql: Sql) {}
 
 	async create(tenantId: TenantId, input: CreateRoleInput): Promise<Role> {

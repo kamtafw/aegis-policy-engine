@@ -9,6 +9,7 @@
 //
 // plane: adapters/postgres
 
+import type { CreateTenantInput, TenantRepositoryPort } from "@core/ports"
 import { Sql } from "./client"
 import type { TenantId, Tenant, PlanTier } from "@core/domain"
 
@@ -27,14 +28,6 @@ interface TenantRow {
 	updatedAt: Date
 }
 
-export interface CreateTenantInput {
-	id: TenantId
-	slug: string
-	name: string
-	publicKey: string
-	planTier: PlanTier
-}
-
 function rowToTenant(row: TenantRow): Tenant {
 	return {
 		id: row.id as TenantId,
@@ -48,7 +41,7 @@ function rowToTenant(row: TenantRow): Tenant {
 	}
 }
 
-export class TenantRepository {
+export class TenantRepository implements TenantRepositoryPort {
 	constructor(private readonly sql: Sql) {}
 
 	async create(input: CreateTenantInput): Promise<Tenant> {
