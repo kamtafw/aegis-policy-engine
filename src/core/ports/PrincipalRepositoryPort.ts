@@ -4,6 +4,13 @@
 // implemented by: adapters/postgres/PrincipalRepository.ts
 //
 // all methods are tenant-scoped  tenant_id is non-optional (AD-S-01)
+// 
+// NOTE ON JWT sub CLAIM:
+//   IdentityService calls findById(tenantId, principalId) where principalId
+//   comes from the JWT `sub` claim. This means the JWT issuer must mint tokens
+//   with the Aegis internal principalId (e.g. "pri_xxx") in `sub`.
+//   The externalId field on Principal is for admin display and external system
+//   correlation — it does not appear in `sub`.
 //
 // plane: core/ports
 

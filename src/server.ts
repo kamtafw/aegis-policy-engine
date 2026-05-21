@@ -21,21 +21,32 @@ import { TenantRepository } from "@adapters/postgres/TenantRepository"
 import { PrincipalRepository } from "@adapters/postgres/PrincipalRepository"
 import { RoleRepository } from "@adapters/postgres/RoleRepository"
 import { PermissionRepository } from "@adapters/postgres/PermissionRepository"
+import { PolicyRepository } from "@adapters/postgres/PolicyRepository"
+import { ServiceRepository } from "@adapters/postgres/ServiceRepository"
+import { JwtValidatorAdapter } from "@adapters/jwt/JwtValidatorAdapter"
 import { TenantRegistryService } from "@core/management/tenant-registry/TenantRegistryService"
 import { AccessControlService } from "@core/management/access-control/AccessControlService"
+import { PolicyRegistryService } from "@core/management/policy-registry/PolicyRegistryService"
+import { ServiceRegistryService } from "@core/management/service-registry/ServiceRegistryService"
+import { IdentityService } from "@core/runtime/IdentityService"
 import { healthRoutes } from "./routes/health"
 import { adminTenantRoutes } from "./routes/admin/tenants"
 import { adminRoleRoutes } from "./routes/admin/roles"
-import { PolicyRepository } from "@adapters/postgres/PolicyRepository"
-import { PolicyRegistryService } from "@core/management/policy-registry/PolicyRegistryService"
 import { adminPolicyRoutes } from "./routes/admin/policies"
-import { ServiceRepository } from "@adapters/postgres/ServiceRepository"
-import { ServiceRegistryService } from "@core/management/service-registry/ServiceRegistryService"
 import { adminServiceRoutes } from "./routes/admin/services"
 
 const HOST = process.env["HOST"] ?? "0.0.0.0"
 const PORT = parseInt(process.env["PORT"] ?? "3000", 10)
 const LOG_LEVEL = process.env["LOG_LEVEL"] ?? "info"
+
+// JWT audience — the value that must appear in the `aud` claim of every
+// inbound token. Issuers must mint tokens with this exact audience value.
+// Prevents cross-service token replay (AD-S-04).
+const JWT_AUDIENCE = process.env["JWT_AUDIENCE"] ?? "aegis"
+
+// JWT issuer — if set, the `iss` claim in every token must match this value.
+// Strongly recommended for production. Optional for local dev.
+const JWT_ISSUER = process.env["JWT_ISSUER"] // undefined = not enforced
 
 async function build() {
 	const server = Fastify({
@@ -57,7 +68,10 @@ async function build() {
 	// Infrastructure clients: instantiated here, passed down — never imported directly by core services
 	// -------------------------------------------------------------------------
 	const sql = createPostgresClient()
-	// TODO: (Day 5): Redis client (ioredis)
+
+	// TODO: (Day 14): Redis client (ioredis) — required for IdentityService cache
+	// For now IdentityService cannot be fully exercised without Redis
+	// Wire it here once RedisCacheAdapter exists
 
 	// -------------------------------------------------------------------------
 	// Repository adapters
@@ -71,12 +85,16 @@ async function build() {
 
 	// TODO: (Day 12): RedisCacheAdapter
 	// TODO: (Day 12): RedisAuditBufferAdapter
-	// TODO: (Day 13): JwtValidatorAdapter
 	// TODO: (Day 15): PolicyRepositoryAdapter
 	// TODO: (Day 15): PrincipalProjectionAdapter
 
 	// -------------------------------------------------------------------------
-	// Core services
+	// JWT adapter
+	// -------------------------------------------------------------------------
+	const jwtValidator = new JwtValidatorAdapter(JWT_ISSUER)
+
+	// -------------------------------------------------------------------------
+	// Core services — management plane
 	// -------------------------------------------------------------------------
 	const tenantRegistry = new TenantRegistryService(tenantRepo)
 	const accessControl = new AccessControlService(
@@ -88,7 +106,45 @@ async function build() {
 	const policyRegistry = new PolicyRegistryService(policyRepo, tenantRepo)
 	const serviceRegistry = new ServiceRegistryService(serviceRepo)
 
-	// TODO: (Day 13): IdentityService
+	// -------------------------------------------------------------------------
+	// Core services — runtime plane
+	//
+	// IdentityService is instantiated here but not yet wired to a live request
+	// path — that happens on Day 16 when EnforcementPipeline is assembled;
+	// it is constructed here so the composition is visible and the wiring can
+	// be verified before the pipeline is live
+	//
+	// TODO: (Day 14): replace the cache stub below with RedisCacheAdapter
+	// IdentityService will not function correctly until a real CachePort is injected
+	// -------------------------------------------------------------------------
+
+	// temporary no-op CachePort stub — replaced on Day 14 with RedisCacheAdapter;
+	// using a stub (not null) so the IdentityService constructor receives a valid
+	// interface and the composition compiles; calling any method on this stub
+	// throws, which correctly causes IdentityService to fail closed (AD-S-07)
+	const cacheTODO = {
+		get: async (_key: string) => {
+			throw new Error("CachePort not yet wired — RedisCacheAdapter required (Day 14)")
+		},
+		set: async () => {
+			throw new Error("CachePort not yet wired")
+		},
+		del: async () => {
+			throw new Error("CachePort not yet wired")
+		},
+		lock: async () => {
+			throw new Error("CachePort not yet wired")
+		},
+	}
+
+	const _identityService = new IdentityService(
+		jwtValidator,
+		cacheTODO,
+		tenantRepo,
+		principalRepo,
+		JWT_AUDIENCE,
+	)
+
 	// TODO: (Day 14): PermissionResolver
 	// TODO: (Day 16): EnforcementPipeline
 
@@ -101,9 +157,9 @@ async function build() {
 	await server.register(adminPolicyRoutes(tenantRegistry, policyRegistry))
 	await server.register(adminServiceRoutes(tenantRegistry, serviceRegistry))
 
-	// graceful shutdown — allow in-flight requests to complete
-	// critical for the audit buffer: the process must not be killed while an
-	// AuditRecord write is in progress (AD-S-08)
+	// -------------------------------------------------------------------------
+	// Graceful shutdown (AD-S-08 — process must not be killed mid-audit-write)
+	// -------------------------------------------------------------------------
 	const shutdown = async (signal: string) => {
 		server.log.info({ signal }, "Shutdown signal received")
 		await server.close()
